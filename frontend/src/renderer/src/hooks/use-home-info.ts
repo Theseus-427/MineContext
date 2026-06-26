@@ -95,11 +95,11 @@ export const useHomeInfo = () => {
     }
   }
 
-  const { runAsync: fetchTasks } = useRequest<Task[] | undefined, any>(
+  const { runAsync: _fetchTasks } = useRequest<Task[] | undefined, any>(
     async (day: Dayjs) => {
       // Get tasks for the entire day
       const startOfDay = day.startOf('day').toISOString()
-      const endOfDay = day.add(1, 'day').startOf('day').toISOString()
+      const endOfDay = dayjs(day).add(1, 'day').startOf('day').toISOString()
       return await window.dbAPI.getTasks(startOfDay, endOfDay)
     },
     {
@@ -107,13 +107,19 @@ export const useHomeInfo = () => {
     }
   )
 
+  const fetchTasks = async (day: Dayjs) => {
+    const result = await _fetchTasks(day)
+    setTasks(result || [])
+    return result
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const daily = await window.dbAPI.getVaultsByDocumentType('daily')
+        const daily = await window.dbAPI.getVaultsByDocumentType('DailyReport')
         setDailySummary(daily)
 
-        const weekly = await window.dbAPI.getVaultsByDocumentType('weekly')
+        const weekly = await window.dbAPI.getVaultsByDocumentType('WeeklyReport')
         setWeeklySummary(weekly)
 
         const tasks = await fetchTasks(dayjs())

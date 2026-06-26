@@ -8,7 +8,6 @@ import fs from 'fs'
 import { app } from 'electron'
 import { isValidIsoString, toSqliteDatetime } from '../utils/time'
 import { is } from '@electron-toolkit/utils'
-import { DB } from './Database'
 import { TODOActivity } from '@interface/db/todo'
 import { getLogger } from '@shared/logger/main'
 import { VaultDatabaseService } from './VaultDatabaseService'
@@ -231,9 +230,8 @@ class DatabaseManager extends VaultDatabaseService {
         logger.error('❌ Invalid endTime format:', endTime)
         throw new Error('Invalid endTime format. Expected ISO 8601 string.')
       }
-      const db = DB.getInstance(DB.dbName)
-      const sql = 'SELECT * FROM todo WHERE start_time >= ? AND start_time < ? ORDER BY start_time ASC'
-      const rows = db.query<TODOActivity>(sql, [startTime, endTime])
+      const stmt = this.db!.prepare('SELECT * FROM todo WHERE start_time >= ? AND start_time < ? ORDER BY start_time ASC')
+      const rows = stmt.all(startTime, endTime) as TODOActivity[]
       return rows
     } catch (error) {
       logger.error('❌ Failed to get tasks:', error)
@@ -247,8 +245,11 @@ class DatabaseManager extends VaultDatabaseService {
   ) {
     try {
       this.ensureInitialized()
-      const db = DB.getInstance(DB.dbName)
-      const info = db.insert('todo', taskData)
+      const keys = Object.keys(taskData)
+      const columns = keys.join(', ')
+      const placeholders = keys.map((k) => `@${k}`).join(', ')
+      const sql = `INSERT INTO todo (${columns}) VALUES (${placeholders})`
+      const info = this.db!.prepare(sql).run(taskData)
       return info
     } catch (error) {
       logger.error('❌ Failed to add task:', error)
