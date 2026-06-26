@@ -80,6 +80,17 @@ const ScreenMonitor: React.FC = () => {
   const appAllSources = useMemo(() => {
     return (sources.state === 'hasData' ? sources.data.appSources : []).filter((v) => v.isVisible)
   }, [sources])
+  const sourceError = useMemo(() => {
+    if (sources.state === 'hasData') {
+      return sources.data.error || ''
+    }
+
+    if (sources.state === 'hasError') {
+      return get(sources, 'error.message', 'Failed to load capture sources.')
+    }
+
+    return ''
+  }, [sources])
 
   const [currentDate, setCurrentDate] = useState(dayjs().toDate())
   const isToday = dayjs(currentDate).isSame(dayjs(), 'day')
@@ -170,6 +181,16 @@ const ScreenMonitor: React.FC = () => {
 
   // Start monitoring session
   const startMonitoring = useMemoizedFn(async () => {
+    if (!hasPermission) {
+      Message.error('Screen recording permission is required.')
+      return
+    }
+
+    if (sourceError || (screenAllSources.length === 0 && appAllSources.length === 0)) {
+      Message.error(sourceError || 'No screen or window sources are available.')
+      return
+    }
+
     await window.screenMonitorAPI.updateModelConfig({
       recordInterval,
       recordingHours,
@@ -485,10 +506,6 @@ const ScreenMonitor: React.FC = () => {
     }
   }, [settingSources, sources])
 
-  const handleRequestPermission = useMemoizedFn(async () => {
-    await grantPermission()
-  })
-
   return (
     <div className="top-0 left-0 flex flex-col h-screen overflow-y-hidden pr-2 pb-2 pl-0 rounded-[20px] relative">
       <div style={{ height: '8px', appRegion: 'drag' } as React.CSSProperties} />
@@ -499,10 +516,10 @@ const ScreenMonitor: React.FC = () => {
           isToday={isToday}
           screenAllSources={screenAllSources}
           appAllSources={appAllSources}
+          sourceError={sourceError}
           onOpenSettings={openSettings}
           onStartMonitoring={startMonitoring}
           onStopMonitoring={stopMonitoring}
-          onRequestPermission={handleRequestPermission}
         />
 
         {/* Recording area */}
@@ -553,6 +570,7 @@ const ScreenMonitor: React.FC = () => {
           sources={sources}
           screenAllSources={screenAllSources}
           appAllSources={appAllSources}
+          sourceError={sourceError}
           applicationVisible={applicationVisible}
           tempRecordInterval={tempRecordInterval}
           tempEnableRecordingHours={tempEnableRecordingHours}

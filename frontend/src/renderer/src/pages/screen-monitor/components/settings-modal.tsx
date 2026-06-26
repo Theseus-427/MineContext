@@ -1,5 +1,5 @@
 import React from 'react'
-import { Button, Modal, Slider, TimePicker, Radio, Form, Checkbox, Spin, Switch } from '@arco-design/web-react'
+import { Alert, Button, Modal, Slider, TimePicker, Radio, Form, Checkbox, Spin, Switch } from '@arco-design/web-react'
 import clsx from 'clsx'
 import { Application } from './application'
 import screenIcon from '@renderer/assets/icons/screen.svg'
@@ -11,6 +11,7 @@ interface SettingsModalProps {
   sources: any
   screenAllSources: any[]
   appAllSources: any[]
+  sourceError?: string
   applicationVisible: boolean
   tempRecordInterval: number
   tempEnableRecordingHours: boolean
@@ -31,6 +32,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   sources,
   screenAllSources,
   appAllSources,
+  sourceError,
   applicationVisible,
   tempRecordInterval,
   tempEnableRecordingHours,
@@ -64,6 +66,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         </>
       }
       style={{ width: 682 }}>
+      {sourceError && <Alert type="error" content={sourceError} className="!mb-4" />}
+      {!sourceError && sources.state === 'hasData' && screenAllSources.length === 0 && appAllSources.length === 0 && (
+        <Alert
+          type="warning"
+          content="No screen or window sources are available. Check Screen Recording permission, then fully quit and reopen MineContext."
+          className="!mb-4"
+        />
+      )}
       <Form layout="vertical" form={form}>
         <div className="flex w-full flex-1 mt-5">
           <div className="flex flex-col flex-1 pr-[24px]">

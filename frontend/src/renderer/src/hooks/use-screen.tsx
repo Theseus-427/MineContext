@@ -36,16 +36,13 @@ export const useScreen = () => {
 
   const checkPermissions = useMemoizedFn(async () => {
     const permission = await window.screenMonitorAPI.checkPermissions()
-    if (!permission) {
-      Message.error('Screen recording permission is required.')
-      setHasPermission(false)
-    } else {
-      setHasPermission(true)
-    }
+    setHasPermission(permission)
+    return permission
   })
 
-  const grantPermission = useMemoizedFn(() => {
-    window.screenMonitorAPI.openPrefs()
+  const grantPermission = useMemoizedFn(async () => {
+    await window.screenMonitorAPI.openPrefs()
+    Message.info('After granting Screen Recording permission, fully quit and reopen MineContext.')
     setTimeout(checkPermissions, 5000)
   })
 

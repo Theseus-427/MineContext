@@ -11,6 +11,19 @@ import { NativeCaptureHelper } from './native-capture-helper'
 import path from 'node:path'
 const logger = getLogger('ScreenshotService')
 
+const getScreenCaptureTroubleshootingMessage = (errorMessage: string) => {
+  if (process.platform !== 'darwin') {
+    return `Failed to enumerate capture sources: ${errorMessage}`
+  }
+
+  const status = systemPreferences.getMediaAccessStatus('screen')
+  return [
+    `Failed to enumerate capture sources: ${errorMessage}`,
+    `macOS screen recording status: ${status}`,
+    'Grant Screen Recording permission to MineContext in System Settings > Privacy & Security > Screen Recording, then fully quit and reopen MineContext.'
+  ].join(' ')
+}
+
 /**
  * @interface CaptureSource
  * @description The final, unified structure for a capture source sent to the frontend.
@@ -46,19 +59,32 @@ class CaptureSourcesTools {
 
   async getCaptureSourcesTools() {
     try {
-      const sources = await desktopCapturer.getSources({
-        types: ['window', 'screen'],
-        thumbnailSize: { width: 256, height: 144 },
-        fetchWindowIcons: true
-      })
+      let sources: DesktopCapturerSource[] = []
+
+      try {
+        sources = await desktopCapturer.getSources({
+          types: ['window', 'screen'],
+          thumbnailSize: { width: 256, height: 144 },
+          fetchWindowIcons: true
+        })
+      } catch (captureError: any) {
+        const error = getScreenCaptureTroubleshootingMessage(captureError.message)
+        logger.error(error)
+        return {
+          success: false,
+          error,
+          sources: [] as CaptureSource[]
+        }
+      }
 
       const formattedSources: CaptureSource[] = sources.map((source) => {
         let displayName = source.name
+        const type = source.id.startsWith('screen:') || source.display_id ? 'screen' : 'window'
 
         return {
           id: source.id,
           name: displayName,
-          type: source.display_id ? 'screen' : 'window',
+          type,
           thumbnail: source.thumbnail.toDataURL(),
           appIcon: source.appIcon ? source.appIcon.toDataURL() : null,
           isVisible: true // desktopCapturer only returns visible windows
@@ -322,29 +348,17 @@ class CaptureSourcesTools {
         sources: formattedSources
       }
     } catch (error: any) {
-      logger.error('Failed to get capture sources:', error)
+      const errorMessage = getScreenCaptureTroubleshootingMessage(error.message)
+      logger.error('Failed to get capture sources:', errorMessage)
       return {
         success: false,
-        error: error.message,
+        error: errorMessage,
         sources: [] as CaptureSource[]
       }
     }
   }
   async takeSourceScreenshotTools(sourceId: string) {
     try {
-      // Check permissions on macOS
-      if (process.platform === 'darwin') {
-        const hasScreenPermission = systemPreferences.getMediaAccessStatus('screen')
-        if (hasScreenPermission !== 'granted') {
-          const permissionGranted = await systemPreferences.askForMediaAccess('camera')
-          if (!permissionGranted) {
-            throw new Error(
-              'Screen recording permission not granted. Please grant screen recording permissions in System Preferences > Security & Privacy > Screen Recording and restart the application.'
-            )
-          }
-        }
-      }
-
       // Handle virtual windows (minimized or on other spaces)
       if (sourceId.startsWith('virtual-window:')) {
         // Extract app name from the source ID
@@ -765,8 +779,9 @@ class CaptureSourcesTools {
         return { success: true, sources: allVisible }
       }
     } catch (error: any) {
-      logger.error('Error checking source visibility:', error)
-      return { success: false, error: error.message }
+      const errorMessage = getScreenCaptureTroubleshootingMessage(error.message)
+      logger.error('Error checking source visibility:', errorMessage)
+      return { success: false, error: errorMessage }
     }
   }
 }

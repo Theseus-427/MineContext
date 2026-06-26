@@ -1,6 +1,6 @@
 [project]
 name = "MineContext"
-version = "0.1.8"
+version = "0.1.9"
 description = "An open-source, proactive context-aware AI partner"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,7 +34,8 @@ dependencies = [
     "pypdf",
     "openpyxl",
     "chromadb",
-    "onnxruntime",
+    "onnxruntime<=1.21.0; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    "onnxruntime==1.20.1; sys_platform == 'darwin' and platform_machine == 'x86_64'",
     "qdrant-client",
     "mss",
     "volcengine",

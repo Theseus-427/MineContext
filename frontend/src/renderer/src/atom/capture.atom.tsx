@@ -10,13 +10,17 @@ import { FC, PropsWithChildren } from 'react'
 
 const fetchCaptureSources = async () => {
   if (!window.screenMonitorAPI || !window.screenMonitorAPI.getCaptureAllSources) {
-    return { screenSources: [], appSources: [] }
+    return { screenSources: [], appSources: [], error: 'Screen Monitor API is unavailable.' }
   }
 
   const result = await window.screenMonitorAPI.getCaptureAllSources()
 
   if (!result.success) {
-    throw new Error(result.error || 'Failed to load capture sources')
+    return {
+      screenSources: [],
+      appSources: [],
+      error: result.error || 'Failed to load capture sources.'
+    }
   }
 
   const { sources } = result
@@ -25,7 +29,8 @@ const fetchCaptureSources = async () => {
 
   return {
     screenSources: formatName(screenSources),
-    appSources: formatName(appSources)
+    appSources: formatName(appSources),
+    error: ''
   }
 }
 const fetchCaptureSourcesFromSettings = async () => {

@@ -28,7 +28,33 @@ class ScreenshotService extends CaptureSourcesTools {
   async checkPermissions(): Promise<boolean> {
     if (isMac) {
       const status = systemPreferences.getMediaAccessStatus('screen')
-      return status === 'granted'
+      if (status !== 'granted') {
+        return false
+      }
+
+      try {
+        const screenSources = await desktopCapturer.getSources({
+          types: ['screen'],
+          thumbnailSize: { width: 1, height: 1 },
+          fetchWindowIcons: false
+        })
+        const hasUsableScreenSource = screenSources.some(
+          (source) => source.id.startsWith('screen:') || source.display_id
+        )
+
+        if (!hasUsableScreenSource) {
+          logger.warn(
+            'macOS screen recording status is granted, but Electron cannot enumerate screen sources. A full app restart may be required.'
+          )
+        }
+
+        return hasUsableScreenSource
+      } catch (error: any) {
+        logger.warn(
+          `macOS screen recording status is granted, but Electron failed to enumerate screen sources: ${error.message}`
+        )
+        return false
+      }
     }
     return true
   }
